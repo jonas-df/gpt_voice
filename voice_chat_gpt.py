@@ -16,6 +16,7 @@ import json
 import eleven_api
 import pygame
 
+# TODO: write a new TTS function using Microsoft Edge translation
 
 # Define the format, channels, rate, and chunk size for recording
 FORMAT = pyaudio.paInt16
@@ -42,7 +43,6 @@ recording_thread = None
 load_dotenv()
 
 # Instantiate the tts
-
 tts = eleven_api.ElevenLabsTTS()
 
 
@@ -59,16 +59,11 @@ def append_json(file_path, role, content):
     except FileNotFoundError:
         messages = []
 
-    # Ensure the initial message is always at the beginning, before any new messages are added
-    if not messages or messages[0].get("content") != initial_message.get("content"):
-        messages = [initial_message] + messages
+    # Clear messages except for the system message
+    messages = [initial_message]
 
     # Append the new message
     messages.append({"role": role, "content": content})
-
-    # Maintain a rolling window of the last i messages, ensuring the initial message is included
-    if len(messages) > 11:
-        messages = [initial_message] + messages[-10:]
 
     # Write the updated list back to the file
     with open(file_path, "w") as file:
@@ -129,7 +124,7 @@ def record_audio():
 
 def button_pressed(key):
     global recording_thread
-    if key == keyboard.Key.ctrl_l and not start_recording_flag.is_set():
+    if key == keyboard.Key.ctrl_r and not start_recording_flag.is_set():
         start_recording_flag.set()
         stop_recording_flag.clear()
         recording_thread = Thread(target=record_audio)
@@ -138,7 +133,7 @@ def button_pressed(key):
 
 
 def button_release(key):
-    if key == keyboard.Key.ctrl_l:
+    if key == keyboard.Key.ctrl_r:
         stop_recording_flag.set()
         print("Key released, stopping recording... ")
 
@@ -189,37 +184,37 @@ def start_watcher_daemon():
     Thread(target=start_watcher, daemon=True).start()
 
 
-# Transcribing audio to text using whisper
 def transcribe_audio(track, model="base", lang="en", callback=None):
     try:
+        print("Loading whisper model...")
         decode_model = whisper.load_model(model)
-    except Exception as e:
-        return f"Failed to load whisper model...'{model}': {e}"
+        print("Whisper model loaded successfully.")
 
-    try:
+        print("Loading audio file...")
         audio = whisper.load_audio(track)
         audio = whisper.pad_or_trim(audio)
-    except Exception as e:
-        return f"Failed to load audio'{model}': {e}"
+        print("Audio file loaded successfully.")
 
-    # make log-Mel spectrogram and move to the same device as the model
-    mel = whisper.log_mel_spectrogram(audio).to(decode_model.device)
+        # make log-Mel spectrogram and move to the same device as the model
+        mel = whisper.log_mel_spectrogram(audio).to(decode_model.device)
 
-    try:
+        print("Decoding audio...")
         options = whisper.DecodingOptions(language=lang, fp16=False)
         result = whisper.decode(decode_model, mel, options)
+        print("Audio decoded successfully.")
 
+        message = result.text  # pyright: ignore
+        success_message = f"Transcribed text: {message}"
+        print(f"{GREEN}{success_message}{RESET}")
+        write_to_file(message, TEXT_FILENAME)
+        append_json(MESSAGES_JSON, "user", message)
+
+        if callback:
+            callback()
     except Exception as e:
-        return f"Failed to transcribe the audio...'{model}': {e}"
-
-    message = result.text  # pyright: ignore List[DecodingResult]
-    success_message = f"Transcribed text: {message} \n"
-    print(f"{GREEN}{success_message}{RESET}")
-    write_to_file(message, TEXT_FILENAME)
-    append_json(MESSAGES_JSON, "user", message)
-
-    if callback:
-        callback()
+        error_message = f"An error occurred during audio transcription: {e}"
+        print(f"{error_message}")
+        return error_message
 
 
 def on_decode_audio_complete():
@@ -230,25 +225,30 @@ def play_mp3(file_path):
     pygame.mixer.init()
     pygame.mixer.music.load(file_path)
     pygame.mixer.music.play()
-    while pygame.mixer.music.get_busy():  # Wait for audio to finish playing
+    while pygame.mixer.music.get_busy():
         pygame.time.Clock().tick(10)
 
 
 def groq_post_question():
+    try:
+        client = Groq(
+            api_key=os.environ.get("GROQ_API_KEY"),
+        )
 
-    client = Groq(
-        api_key=os.environ.get("GROQ_API_KEY"),
-    )
+        chat_completion = client.chat.completions.create(
+            messages=read_json(MESSAGES_JSON),
+            model="mixtral-8x7b-32768",
+        )
 
-    chat_completion = client.chat.completions.create(
-        messages=read_json(MESSAGES_JSON),
-        model="mixtral-8x7b-32768",
-    )
+        reply = chat_completion.choices[0].message.content
 
-    reply = chat_completion.choices[0].message.content
+        print(f"{YELLOW}{reply}{RESET} \n")
+        append_json(MESSAGES_JSON, "assistant", reply)
 
-    print(f"{YELLOW}{reply}{RESET} \n")
-    append_json(MESSAGES_JSON, "assistant", reply)
+    except Exception as e:
+        error_message = f"An error occurred during GROQ post question: {e}"
+        print(f"{error_message}")
+        return error_message
 
     tts.text_to_speech(reply)
     play_mp3("output.mp3")
