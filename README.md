@@ -25,7 +25,8 @@ pip install pyaudio watchdog pynput groq openai-whisper python-dotenv pygame
 
 ```
 
-In addition it is required to install the portaudio library that pyaudio depends on as well as ffmpeg
+In addition it is required to install the portaudio library that pyaudio
+depends on as well as ffmpeg
 
 ```bash
 sudo apt install portaudio19-dev ffmpeg
