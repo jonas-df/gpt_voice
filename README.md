@@ -8,21 +8,11 @@ in turn returns an answer.
 
 ## Dependencies
 
-The application has the following python dependencies:
-
-- pyaudio
-- watchdog
-- pynput
-- OpenAI Whisper
-- groq
-- dotenv
-
-Install them using:
+The application has the following python dependencies that can be installed
+with pip:
 
 ```bash
-
 pip install pyaudio watchdog pynput groq openai-whisper python-dotenv pygame
-
 ```
 
 In addition it is required to install the portaudio library that pyaudio
@@ -30,6 +20,14 @@ depends on as well as ffmpeg
 
 ```bash
 sudo apt install portaudio19-dev ffmpeg
+```
+
+You also need to keep a .env file with your environment variables which in this
+case is your groq API key. And if you want to use Elven labs your elven labs
+API key.
+
+```bash
+export GROQ_API_KEY="<your-groq-api-key>"
 ```
 
 ## Features
@@ -46,8 +44,9 @@ sudo apt install portaudio19-dev ffmpeg
   initialise the model and how many of your previous questions you want to
   resend to the model.
   It currently sends the last 5 questions and answers to the model for context.
-- **Upload to Elven Labs**: Uploads the text reply to Elven labs and converts
-  the text to speech using their models. Plays the audio file back to the user.
+- **Upload to TTS Service**: Uploads the text reply to Microsofts Edge service
+  or to Elven Labs and converts the text to speech using their models.
+  Plays the audio file back to the user.
 
 ## Running the application
 

@@ -30,6 +30,10 @@ YELLOW = "\033[33m"  # Yellow text
 RESET = "\033[0m"
 TEXT_FILENAME = "transcribe_log.txt"
 MESSAGES_JSON = "message.json"
+INITIAL_MESSAGE = {
+    "role": "system",
+    "content": "You are a helpful assistant. You give concise answers of a maximum of 15 lines.",
+}
 
 audio = pyaudio.PyAudio()
 
@@ -45,25 +49,31 @@ load_dotenv()
 
 
 # JSON helper functions
-def append_json(file_path, role, content):
-    initial_message = {
-        "role": "system",
-        "content": "You are a helpful assistant. You give concise answers of a maximum of 15 lines.",
-    }
+def initialize_messages():
+    # Always overwrite the file with the initial message
+    with open(MESSAGES_JSON, "w") as file:
+        json.dump([INITIAL_MESSAGE], file, indent=4)
+    print(f"{GREEN}messages.json has been initialized.{RESET}")
 
+
+def append_json(file_path, role, content):
     try:
         with open(file_path, "r") as file:
             messages = json.load(file)
     except FileNotFoundError:
         messages = []
 
-    # Clear messages except for the system message
-    messages = [initial_message]
+    # Ensure the initial message is always at the beginning, before any new messages are added
+    if not messages or messages[0].get("content") != INITIAL_MESSAGE.get("content"):
+        messages = [INITIAL_MESSAGE] + messages
 
     # Append the new message
     messages.append({"role": role, "content": content})
 
-    # Write the updated list back to the file
+    # Maintain a rolling window of the last i messages, ensuring the initial message is included
+    if len(messages) > 11:
+        messages = [INITIAL_MESSAGE] + messages[-10:]
+
     with open(file_path, "w") as file:
         json.dump(messages, file, indent=4)
 
@@ -254,5 +264,6 @@ def groq_post_question():
 
 
 if __name__ == "__main__":
+    initialize_messages()
     start_watcher_daemon()
     start_listener()
