@@ -25,21 +25,24 @@ class ElevenLabsTTS:
         similarity_boost=0.5,
         output_file="output.mp3",
     ):
-        data = {
-            "text": text,
-            "model_id": model_id,
-            "voice_settings": {
-                "stability": stability,
-                "similarity_boost": similarity_boost,
-            },
-        }
+        try:
+            data = {
+                "text": text,
+                "model_id": model_id,
+                "voice_settings": {
+                    "stability": stability,
+                    "similarity_boost": similarity_boost,
+                },
+            }
 
-        response = requests.post(self.url, json=data, headers=self.headers)
-        if response.status_code == 200:
-            with open(output_file, "wb") as f:
-                for chunk in response.iter_content(chunk_size=self.chunk_size):
-                    if chunk:
-                        f.write(chunk)
-            print(f"Audio saved to {output_file}")
-        else:
-            print(f"Error: {response.status_code} - {response.text}")
+            response = requests.post(self.url, json=data, headers=self.headers)
+            if response.status_code == 200:
+                with open(output_file, "wb") as f:
+                    for chunk in response.iter_content(chunk_size=self.chunk_size):
+                        if chunk:
+                            f.write(chunk)
+                print(f"Audio saved to {output_file}")
+            else:
+                print(f"Error: {response.status_code} - {response.text}")
+        except Exception as e:
+            print(f"An error occurred during text-to-speech: {e}")
