@@ -13,8 +13,10 @@ import whisper
 from groq import Groq
 from dotenv import load_dotenv
 import json
-import eleven_api
+
+# import eleven_api
 import pygame
+import edge_api
 
 
 # Define the format, channels, rate, and chunk size for recording
@@ -43,7 +45,7 @@ load_dotenv()
 
 # Instantiate the tts
 
-tts = eleven_api.ElevenLabsTTS()
+# tts = eleven_api.ElevenLabsTTS()
 
 
 # JSON helper functions
@@ -250,7 +252,8 @@ def groq_post_question():
     print(f"{YELLOW}{reply}{RESET} \n")
     append_json(MESSAGES_JSON, "assistant", reply)
 
-    tts.text_to_speech(reply)
+    edge_api.EdgeTTS.run(reply, "en-GB-SoniaNeural", "output.mp3")
+    # tts.text_to_speech(reply)
     play_mp3("output.mp3")
 
 
