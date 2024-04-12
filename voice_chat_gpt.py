@@ -18,7 +18,6 @@ import json
 import pygame
 import edge_api
 
-# TODO: write a new TTS function using Microsoft Edge translation
 
 # Define the format, channels, rate, and chunk size for recording
 FORMAT = pyaudio.paInt16
@@ -43,9 +42,6 @@ recording_thread = None
 
 # Load groq API credentials stored in .env file
 load_dotenv()
-
-# Instantiate the tts
-tts = eleven_api.ElevenLabsTTS()
 
 
 # JSON helper functions

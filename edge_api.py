@@ -16,11 +16,20 @@ class EdgeTTS:
     def run(text: str, voice: str, output_file: str):
         tts_instance = EdgeTTS(text, voice)
 
-        loop = asyncio.get_event_loop_policy().get_event_loop()
         try:
-            loop.run_until_complete(tts_instance.save_to_file(output_file))
-        finally:
-            loop.close()
+            # Check if there is an existing loop in this thread
+            loop = asyncio.get_event_loop()
+        except RuntimeError as e:
+            # If not, create a new loop
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+        if loop.is_closed():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+        loop.run_until_complete(tts_instance.save_to_file(output_file))
+        loop.close()
 
 
 # Usage example
