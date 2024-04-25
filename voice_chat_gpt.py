@@ -44,7 +44,7 @@ start_recording_flag = Event()
 stop_recording_flag = Event()
 recording_thread = None
 
-# Load groq API credentials stored in .env file
+# Load API credentials stored in .env file
 load_dotenv()
 
 
@@ -225,10 +225,6 @@ def transcribe_audio(track, model="base", lang="en", callback=None):
         return error_message
 
 
-def on_decode_audio_complete():
-    groq_post_question()
-
-
 def play_mp3(file_path):
     pygame.mixer.init()
     pygame.mixer.music.load(file_path)
@@ -237,10 +233,16 @@ def play_mp3(file_path):
         pygame.time.Clock().tick(10)
 
 
+def on_decode_audio_complete():
+    groq_post_question()
+    play_mp3("output.mp3")
+
+
 def groq_post_question():
     try:
         client = Groq(
-            api_key=os.environ.get("GROQ_API_KEY"),
+            # api_key=os.environ.get("GROQ_API_KEY"),
+            api_key=GROQ_API_KEY
         )
 
         chat_completion = client.chat.completions.create(
@@ -260,7 +262,6 @@ def groq_post_question():
 
     edge_api.EdgeTTS.run(reply, "en-GB-SoniaNeural", "output.mp3")
     # tts.text_to_speech(reply)
-    play_mp3("output.mp3")
 
 
 if __name__ == "__main__":
