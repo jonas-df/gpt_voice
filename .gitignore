@@ -4,6 +4,7 @@ transcribe_log.txt
 message.json
 *.mp3
 .DS_Store
+myenv/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
