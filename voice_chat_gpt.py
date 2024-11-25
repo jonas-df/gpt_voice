@@ -1,5 +1,3 @@
-#!/usr/bin/python3
-
 from pynput import keyboard
 import pyaudio
 import wave
@@ -34,6 +32,7 @@ INITIAL_MESSAGE = {
     "role": "system",
     "content": "You are a helpful assistant. You give concise answers of a maximum of 15 lines.",
 }
+MAX_REPLY_LENGTH = 500
 
 audio = pyaudio.PyAudio()
 
@@ -132,7 +131,7 @@ def record_audio():
 
 def button_pressed(key):
     global recording_thread
-    if key == keyboard.Key.ctrl_r and not start_recording_flag.is_set():
+    if key == keyboard.Key.ctrl_l and not start_recording_flag.is_set():
         start_recording_flag.set()
         stop_recording_flag.clear()
         recording_thread = Thread(target=record_audio)
@@ -141,7 +140,7 @@ def button_pressed(key):
 
 
 def button_release(key):
-    if key == keyboard.Key.ctrl_r:
+    if key == keyboard.Key.ctrl_l:
         stop_recording_flag.set()
         print("Key released, stopping recording... ")
 
@@ -159,7 +158,7 @@ class FileMonitorHandler(FileSystemEventHandler):
         self.last_modified = time.time()
 
     def on_modified(self, event):
-        if event.src_path.endswith(WAVE_OUTPUT_FILENAME):
+        if event.src_path.endswith(WAVE_OUTPUT_FILENAME):  # type: ignore
             current_time = time.time()
             # Ignore events that occur within 1 second of the last one
             if current_time - self.last_modified > 1:
@@ -241,8 +240,8 @@ def on_decode_audio_complete():
 def groq_post_question():
     try:
         client = Groq(
-            # api_key=os.environ.get("GROQ_API_KEY"),
-            api_key=GROQ_API_KEY
+            api_key=os.environ.get("GROQ_API_KEY"),
+            # api_key=GROQ_API_KEY
         )
 
         chat_completion = client.chat.completions.create(
@@ -250,18 +249,29 @@ def groq_post_question():
             model="mixtral-8x7b-32768",
         )
 
+        # Safely access the reply
         reply = chat_completion.choices[0].message.content
+
+        if reply is None:
+            raise ValueError("The reply from GROQ is None.")
 
         print(f"{YELLOW}{reply}{RESET} \n")
         append_json(MESSAGES_JSON, "assistant", reply)
 
     except Exception as e:
         error_message = f"An error occurred during GROQ post question: {e}"
-        print(f"{error_message}")
+        print(error_message)
         return error_message
 
-    edge_api.EdgeTTS.run(reply, "en-GB-SoniaNeural", "output.mp3")
-    # tts.text_to_speech(reply)
+    # Check the length of the reply before sending it to edgeTTS
+    if len(reply) > MAX_REPLY_LENGTH:
+        print(f"The reply is too long ({len(reply)} characters). Skipping TTS.")
+        return "Reply too long for TTS."
+
+    try:
+        edge_api.EdgeTTS.run(reply, "en-GB-SoniaNeural", "output.mp3")
+    except Exception as e:
+        print(f"An error occurred during TTS: {e}")
 
 
 if __name__ == "__main__":
