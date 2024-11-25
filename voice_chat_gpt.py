@@ -195,7 +195,7 @@ def transcribe_audio(track, model="base", lang="en", callback=None):
     try:
         print("Loading whisper model...")
         decode_model = whisper.load_model(model)
-        print("Whisper model loaded successfully.")
+        print("Whisper model loaded successfully.\n")
 
         print("Loading audio file...")
         audio = whisper.load_audio(track)
@@ -208,7 +208,7 @@ def transcribe_audio(track, model="base", lang="en", callback=None):
         print("Decoding audio...")
         options = whisper.DecodingOptions(language=lang, fp16=False)
         result = whisper.decode(decode_model, mel, options)
-        print("Audio decoded successfully.")
+        print("Audio decoded successfully.\n")
 
         message = result.text  # pyright: ignore
         success_message = f"Transcribed text: {message}"
@@ -232,16 +232,25 @@ def play_mp3(file_path):
         pygame.time.Clock().tick(10)
 
 
+def delete_mp3(file_path):
+    if os.path.exists(file_path):
+        os.remove(file_path)
+        print(f"Deleted file {file_path}.")
+    else:
+        print(f"File {file_path} does not exist.")
+
+
 def on_decode_audio_complete():
-    groq_post_question()
-    play_mp3("output.mp3")
+    if groq_post_question():
+        play_mp3("output.mp3")
+    else:
+        print("No audio file was generated. Skipping playback.")
 
 
 def groq_post_question():
     try:
         client = Groq(
             api_key=os.environ.get("GROQ_API_KEY"),
-            # api_key=GROQ_API_KEY
         )
 
         chat_completion = client.chat.completions.create(
@@ -261,17 +270,31 @@ def groq_post_question():
     except Exception as e:
         error_message = f"An error occurred during GROQ post question: {e}"
         print(error_message)
-        return error_message
+        return False  # Indicate failure
 
     # Check the length of the reply before sending it to edgeTTS
     if len(reply) > MAX_REPLY_LENGTH:
         print(f"The reply is too long ({len(reply)} characters). Skipping TTS.")
-        return "Reply too long for TTS."
+        return False  # Indicate failure
 
+    # Delete the old `output.mp3` file if it exists
+    output_file = "output.mp3"
+    if os.path.exists(output_file):
+        try:
+            os.remove(output_file)
+            print(f"Deleted old {output_file}.")
+        except Exception as e:
+            print(f"Failed to delete {output_file}: {e}")
+            return False  # Indicate failure
+
+    # Generate the new audio file
     try:
-        edge_api.EdgeTTS.run(reply, "en-GB-SoniaNeural", "output.mp3")
+        edge_api.EdgeTTS.run(reply, "en-GB-SoniaNeural", output_file)
+        print(f"Generated new audio file: {output_file}.")
+        return True  # Indicate success
     except Exception as e:
         print(f"An error occurred during TTS: {e}")
+        return False  # Indicate failure
 
 
 if __name__ == "__main__":
