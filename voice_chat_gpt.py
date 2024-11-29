@@ -11,10 +11,10 @@ import whisper
 from groq import Groq
 from dotenv import load_dotenv
 import json
-
-# import eleven_api
 import pygame
 import edge_api
+
+# import eleven_api
 
 
 # Define the format, channels, rate, and chunk size for recording
@@ -272,10 +272,9 @@ def groq_post_question():
         print(error_message)
         return False  # Indicate failure
 
-    # Check the length of the reply before sending it to edgeTTS
     if len(reply) > MAX_REPLY_LENGTH:
         print(f"The reply is too long ({len(reply)} characters). Skipping TTS.")
-        return False  # Indicate failure
+        return True  # Indicate success, but skip TTS generation
 
     # Delete the old `output.mp3` file if it exists
     output_file = "output.mp3"
